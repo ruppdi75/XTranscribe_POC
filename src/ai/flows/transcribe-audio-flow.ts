@@ -14,8 +14,10 @@ import {z} from 'genkit';
 const TranscriptSegmentSchema = z.object({
   start: z.number().describe('The start time of the segment in seconds.'),
   end: z.number().describe('The end time of the segment in seconds.'),
-  text: z.string().describe('The transcribed text of the segment.'), // Text is required in the final output segment
+  text: z.string().describe('The transcribed text of the segment.'),
 });
+export type TranscriptSegment = z.infer<typeof TranscriptSegmentSchema>;
+
 
 // Schema for the input to the flow and prompt
 const TranscribeAudioInputSchema = z.object({
@@ -67,7 +69,7 @@ export async function transcribeAudio(input: TranscribeAudioInput): Promise<Tran
 const transcribeAudioPrompt = ai.definePrompt({
   name: 'transcribeAudioPrompt',
   input: {schema: TranscribeAudioInputSchema},
-  output: {schema: TranscribeAudioPromptOutputInternalSchema},
+  output: {schema: TranscribeAudioPromptOutputInternalSchema}, // Use internal schema for AI output
   prompt: `You are an expert audio transcription service.
 Transcribe the provided audio file. The language of the audio is '{{{language}}}'.
 
@@ -88,7 +90,7 @@ const transcribeAudioFlow = ai.defineFlow(
   {
     name: 'transcribeAudioFlow',
     inputSchema: TranscribeAudioInputSchema,
-    outputSchema: TranscribeAudioOutputSchema,
+    outputSchema: TranscribeAudioOutputSchema, // Final output uses the strict schema
   },
   async (input): Promise<TranscribeAudioOutput> => {
     console.log(`TRANSFLOW: Starting transcription for language: ${input.language}. Input audio URI (first 100 chars): ${input.audioDataUri.substring(0,100)}...`);
@@ -99,13 +101,13 @@ const transcribeAudioFlow = ai.defineFlow(
 
 
       if (!promptOutput) {
-        console.error('TRANSFLOW: Transcription prompt output was null or undefined from AI model.');
-        throw new Error('Transcription failed: AI model returned no output.');
+        console.error('TRANSFLOW: Transcription prompt output was null or undefined from AI model. This could be due to an API key issue, model availability, or network problems.');
+        throw new Error('Transcription failed: AI model returned no output. Check server logs for API key status and model errors.');
       }
 
       let fullText = promptOutput.text || "";
       const rawSegments = promptOutput.segments || [];
-      const segmentsToReturn: TranscriptSegment[] = [];
+      const segmentsToReturn: TranscriptSegment[] = []; // Conforms to the strict TranscriptSegmentSchema
 
       console.log(`TRANSFLOW: Received ${rawSegments.length} raw segments from AI.`);
 
@@ -114,7 +116,7 @@ const transcribeAudioFlow = ai.defineFlow(
         segmentsToReturn.push({
           start: rawSegment.start,
           end: rawSegment.end,
-          text: rawSegment.text || "", // Default to empty string if text is missing
+          text: rawSegment.text || "", // Default to empty string if text is missing from AI segment
         });
       }
 
@@ -125,7 +127,7 @@ const transcribeAudioFlow = ai.defineFlow(
       }
 
       if (fullText.trim() === "" && segmentsToReturn.length === 0) {
-         console.warn('TRANSFLOW: Transcription output is empty (no text and no segments). This might indicate silent audio or an issue with the source.');
+         console.warn('TRANSFLOW: Transcription output is empty (no text and no segments). This might indicate silent audio or an issue with the source. It could also be a symptom of an underlying API or model issue.');
          // Return a structured empty response consistent with the schema
          return { text: '', segments: [] };
       }
@@ -134,7 +136,7 @@ const transcribeAudioFlow = ai.defineFlow(
       return { text: fullText, segments: segmentsToReturn };
 
     } catch (error) {
-      console.error('TRANSFLOW: Error explicitly caught in transcribeAudioFlow:');
+      console.error('TRANSFLOW: Error explicitly caught in transcribeAudioFlow. THIS IS A SERVER-SIDE LOG. PROVIDE THIS FULL ERROR WHEN REPORTING ISSUES:');
       // Log detailed error information
       if (error instanceof Error) {
         console.error('TRANSFLOW: Error Name:', error.name);
@@ -144,10 +146,10 @@ const transcribeAudioFlow = ai.defineFlow(
         console.error('TRANSFLOW: Caught error is not an instance of Error:', error);
       }
       
-      // Re-throw a simple error message for the client.
-      // The detailed error is logged on the server.
-      const clientErrorMessage = error instanceof Error ? error.message : 'An unknown error occurred during transcription flow execution.';
-      throw new Error(`Transcription flow failed: ${clientErrorMessage}`);
+      // Throw a simpler error to see if it gets serialized better by Next.js/Genkit
+      // The detailed error is logged above on the server.
+      throw new Error(`Server-side transcription flow failed. Check server logs for details (search for "TRANSFLOW: Error explicitly caught"). The most common cause is a missing or invalid GOOGLE_GENAI_API_KEY.`);
     }
   }
 );
+
