@@ -1,0 +1,102 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+@layer base {
+  :root {
+    /* Updated Color Palette - Royal Blue Primary, Royal Green Accent */
+    --background: 210 40% 98%; /* Light Cool Gray - Subtle background */
+    --foreground: 215 20% 25%; /* Dark Grayish Blue - Readable text */
+    --card: 0 0% 100%; /* White - Clean card background */
+    --card-foreground: 215 20% 25%; /* Dark Grayish Blue */
+    --popover: 0 0% 100%; /* White */
+    --popover-foreground: 215 20% 25%; /* Dark Grayish Blue */
+    --primary: 240 60% 50%; /* Royal Blue - Primary actions and highlights */
+    --primary-foreground: 0 0% 100%; /* White - Text on primary elements */
+    --secondary: 210 30% 94%; /* Lighter Cool Gray - Secondary elements */
+    --secondary-foreground: 215 20% 35%; /* Slightly lighter Dark Grayish Blue */
+    --muted: 210 30% 94%; /* Lighter Cool Gray */
+    --muted-foreground: 215 15% 50%; /* Grayish Blue - Muted text */
+    --accent: 120 50% 40%; /* Royal Green for accents like hover states */
+    --accent-foreground: 0 0% 100%; /* White - Text on accent elements */
+    --destructive: 0 75% 55%; /* Softer Red */
+    --destructive-foreground: 0 0% 100%; /* White */
+    --border: 210 20% 88%; /* Light Gray Border */
+    --input: 210 20% 92%; /* Slightly darker input background */
+    --ring: 240 60% 55%; /* Royal Blue Ring for focus */
+    --chart-1: 120 50% 40%; /* Royal Green */
+    --chart-2: 195 70% 40%; /* Steel Blue */
+    --chart-3: 210 50% 50%; /* Medium Blue */
+    --chart-4: 30 80% 60%; /* Orange */
+    --chart-5: 330 70% 65%; /* Pink */
+    --radius: 0.5rem;
+
+    /* Sidebar Colors (Keep consistent or adjust as needed) */
+    --sidebar-background: 215 25% 96%; /* Slightly different light gray */
+    --sidebar-foreground: 215 20% 30%; /* Dark Grayish Blue */
+    --sidebar-primary: 240 60% 50%; /* Royal Blue */
+    --sidebar-primary-foreground: 0 0% 100%; /* White */
+    --sidebar-accent: 120 40% 90%; /* Very light green for hover/active */
+    --sidebar-accent-foreground: 120 50% 30%; /* Darker green for text on accent */
+    --sidebar-border: 210 20% 85%; /* Slightly darker border */
+    --sidebar-ring: 240 60% 55%; /* Royal Blue */
+  }
+
+  .dark {
+    /* Updated Dark Mode Palette - Royal Blue Primary, Royal Green Accent */
+    --background: 220 25% 10%; /* Very Dark Blue-Gray */
+    --foreground: 210 40% 95%; /* Light Gray */
+    --card: 220 20% 13%; /* Darker Blue-Gray */
+    --card-foreground: 210 40% 95%; /* Light Gray */
+    --popover: 220 20% 13%; /* Darker Blue-Gray */
+    --popover-foreground: 210 40% 95%; /* Light Gray */
+    --primary: 240 70% 65%; /* Brighter Royal Blue for Dark Mode */
+    --primary-foreground: 0 0% 100%; /* White */
+    --secondary: 220 15% 25%; /* Medium Dark Blue-Gray */
+    --secondary-foreground: 210 30% 85%; /* Lighter Gray */
+    --muted: 220 15% 25%; /* Medium Dark Blue-Gray */
+    --muted-foreground: 210 20% 65%; /* Medium Gray */
+    --accent: 120 50% 55%; /* Brighter Royal Green for Dark Mode */
+    --accent-foreground: 0 0% 100%; /* White */
+    --destructive: 0 60% 50%; /* Darker Softer Red */
+    --destructive-foreground: 0 0% 95%; /* Off-white */
+    --border: 220 15% 30%; /* Darker Border */
+    --input: 220 15% 28%; /* Dark Input Background */
+    --ring: 240 70% 70%; /* Brighter Royal Blue Ring */
+    --chart-1: 120 50% 55%; /* Royal Green (Dark Mode) */
+    --chart-2: 195 60% 50%; /* Steel Blue */
+    --chart-3: 210 40% 60%; /* Medium Blue */
+    --chart-4: 30 70% 70%; /* Orange */
+    --chart-5: 330 60% 75%; /* Pink */
+
+     /* Dark Sidebar Colors (Adjusted) */
+    --sidebar-background: 220 22% 12%; /* Slightly different dark */
+    --sidebar-foreground: 210 30% 90%; /* Lighter gray */
+    --sidebar-primary: 240 70% 65%; /* Royal Blue (Dark Mode) */
+    --sidebar-primary-foreground: 0 0% 100%; /* White */
+    --sidebar-accent: 120 30% 25%; /* Darker green accent */
+    --sidebar-accent-foreground: 120 50% 70%; /* Lighter green for text on accent */
+    --sidebar-border: 220 15% 28%; /* Darker border */
+    --sidebar-ring: 240 70% 70%; /* Brighter Royal Blue */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    /* Optional: Add subtle gradient or texture */
+    /* background-image: linear-gradient(to bottom right, hsl(var(--background)), hsl(var(--secondary))); */
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
