@@ -14,7 +14,7 @@ import {z} from 'genkit';
 const TranscriptSegmentSchema = z.object({
   start: z.number().describe('The start time of the segment in seconds.'),
   end: z.number().describe('The end time of the segment in seconds.'),
-  text: z.string().describe('The transcribed text of the segment.'),
+  text: z.string().describe('The transcribed text of the segment.'), // Text is required in the final output segment
 });
 
 // Schema for the input to the flow and prompt
@@ -35,20 +35,29 @@ const TranscribeAudioOutputSchema = z.object({
 });
 export type TranscribeAudioOutput = z.infer<typeof TranscribeAudioOutputSchema>;
 
-// Internal schema for the prompt's output, where 'text' can be initially missing if segments are provided
+// Internal schema for the prompt's output, where 'text' can be initially missing
+// and text within segments can also be initially missing from the AI.
 const TranscribeAudioPromptOutputInternalSchema = z.object({
   text: z.string().optional().describe('The full transcribed text of the audio (may be constructed from segments if not directly provided by model).'),
-  segments: z.array(TranscriptSegmentSchema).describe('An array of transcribed audio segments with timestamps.'),
+  segments: z.array(
+      z.object({
+        start: z.number().describe('The start time of the segment in seconds.'),
+        end: z.number().describe('The end time of the segment in seconds.'),
+        text: z.string().optional().describe('The transcribed text of the segment (optional from AI).'),
+      })
+    )
+    .describe('An array of transcribed audio segments with timestamps.'),
 });
 
 
 // This is the exported function that the app calls.
-// It ensures the output conforms to TranscribeAudioOutput (where text is required)
 export async function transcribeAudio(input: TranscribeAudioInput): Promise<TranscribeAudioOutput> {
   if (!input.audioDataUri) {
+    console.error("TRANSFLOW_WRAPPER: Audio data URI is required.");
     throw new Error('Audio data URI is required.');
   }
   if (!input.language) {
+    console.error("TRANSFLOW_WRAPPER: Language is required.");
     throw new Error('Language is required.');
   }
   // The flow will internally handle the schema difference and ensure final output matches TranscribeAudioOutputSchema
@@ -58,7 +67,6 @@ export async function transcribeAudio(input: TranscribeAudioInput): Promise<Tran
 const transcribeAudioPrompt = ai.definePrompt({
   name: 'transcribeAudioPrompt',
   input: {schema: TranscribeAudioInputSchema},
-  // Use the internal schema for the prompt, allowing text to be optional initially
   output: {schema: TranscribeAudioPromptOutputInternalSchema},
   prompt: `You are an expert audio transcription service.
 Transcribe the provided audio file. The language of the audio is '{{{language}}}'.
@@ -76,51 +84,70 @@ Audio data: {{media url=audioDataUri}}`,
   },
 });
 
-// The flow definition. Note its outputSchema is the strict TranscribeAudioOutputSchema.
 const transcribeAudioFlow = ai.defineFlow(
   {
     name: 'transcribeAudioFlow',
     inputSchema: TranscribeAudioInputSchema,
-    outputSchema: TranscribeAudioOutputSchema, // Flow's public contract
+    outputSchema: TranscribeAudioOutputSchema,
   },
-  async (input): Promise<TranscribeAudioOutput> => { // Ensure flow returns the stricter type
-    console.log(`Starting transcription for language: ${input.language}`);
+  async (input): Promise<TranscribeAudioOutput> => {
+    console.log(`TRANSFLOW: Starting transcription for language: ${input.language}. Input audio URI (first 100 chars): ${input.audioDataUri.substring(0,100)}...`);
     try {
-      // The 'result' from the prompt will conform to TranscribeAudioPromptOutputInternalSchema
+      console.log("TRANSFLOW: Calling transcribeAudioPrompt...");
       const {output: promptOutput} = await transcribeAudioPrompt(input);
+      console.log("TRANSFLOW: transcribeAudioPrompt returned. Output (type):", typeof promptOutput, "Is null/undefined:", promptOutput == null);
+
 
       if (!promptOutput) {
-        console.error('Transcription prompt output was null or undefined.');
-        throw new Error('Transcription failed to produce an output from the prompt.');
+        console.error('TRANSFLOW: Transcription prompt output was null or undefined from AI model.');
+        throw new Error('Transcription failed: AI model returned no output.');
       }
 
       let fullText = promptOutput.text || "";
-      const segments = promptOutput.segments || [];
+      const rawSegments = promptOutput.segments || [];
+      const segmentsToReturn: TranscriptSegment[] = [];
 
-      // If 'text' is missing or empty but 'segments' are present, construct 'text' from segments.
-      if ((!fullText || fullText.trim() === "") && segments.length > 0) {
-        console.warn("Full 'text' field was missing or empty from AI output, constructing from segments.");
-        fullText = segments.map(segment => segment.text).join(' ').trim();
+      console.log(`TRANSFLOW: Received ${rawSegments.length} raw segments from AI.`);
+
+      // Process segments, ensuring each has a 'text' field, defaulting to "" if missing.
+      for (const rawSegment of rawSegments) {
+        segmentsToReturn.push({
+          start: rawSegment.start,
+          end: rawSegment.end,
+          text: rawSegment.text || "", // Default to empty string if text is missing
+        });
       }
 
-      // After constructing, check if we have meaningful output.
-      if (fullText.trim() === "" && segments.length === 0) {
-         console.warn('Transcription output is empty (no text and no segments).');
-         // Return a structured empty response
+      // If 'text' is missing or empty but 'segments' are present, construct 'text' from processed segments.
+      if ((!fullText || fullText.trim() === "") && segmentsToReturn.length > 0) {
+        console.log("TRANSFLOW: Full 'text' field was missing or empty from AI output, constructing from segments.");
+        fullText = segmentsToReturn.map(segment => segment.text).join(' ').trim();
+      }
+
+      if (fullText.trim() === "" && segmentsToReturn.length === 0) {
+         console.warn('TRANSFLOW: Transcription output is empty (no text and no segments). This might indicate silent audio or an issue with the source.');
+         // Return a structured empty response consistent with the schema
          return { text: '', segments: [] };
       }
       
-      console.log('Transcription successful.');
-      // Ensure the returned object matches TranscribeAudioOutputSchema
-      return { text: fullText, segments: segments };
+      console.log(`TRANSFLOW: Transcription processing successful. Full text length: ${fullText.length}, Segments count: ${segmentsToReturn.length}. Returning final output.`);
+      return { text: fullText, segments: segmentsToReturn };
 
     } catch (error) {
-      console.error('Error during transcription flow:', error);
-      // Provide a more specific error message if possible
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during transcription.';
-      // Ensure the thrown error doesn't cause a new schema validation issue if it's not a string
-      throw new Error(`Transcription failed: ${String(errorMessage)}`);
+      console.error('TRANSFLOW: Error explicitly caught in transcribeAudioFlow:');
+      // Log detailed error information
+      if (error instanceof Error) {
+        console.error('TRANSFLOW: Error Name:', error.name);
+        console.error('TRANSFLOW: Error Message:', error.message);
+        console.error('TRANSFLOW: Error Stack:', error.stack);
+      } else {
+        console.error('TRANSFLOW: Caught error is not an instance of Error:', error);
+      }
+      
+      // Re-throw a simple error message for the client.
+      // The detailed error is logged on the server.
+      const clientErrorMessage = error instanceof Error ? error.message : 'An unknown error occurred during transcription flow execution.';
+      throw new Error(`Transcription flow failed: ${clientErrorMessage}`);
     }
   }
 );
-
