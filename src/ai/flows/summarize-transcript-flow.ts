@@ -52,6 +52,7 @@ Format your output:
 - Use actual Unicode emojis directly in the text (e.g., 📝 for notepad, 📢 for loudspeaker, ⚖️ for balance scale, 🔧 for wrench). Do NOT use colon-codes like :spiral_notepad:.
 - Use simple HTML tags for formatting: <strong>text</strong> for bold and <em>text</em> for italics. Do NOT use Markdown (e.g., do not use **text** or *text*).
 - Ensure the output is a single block of text, potentially with multiple paragraphs using <p> tags if appropriate, but the entire summary should be one string.
+- Be concise with whitespace. Avoid excessive empty lines or multiple consecutive paragraph breaks. Use single paragraph breaks between distinct points or sections where necessary for readability.
 
 Transcript:
 """
@@ -63,9 +64,9 @@ Custom Prompt:
 {{{customPrompt}}}
 """
 
-Please generate the summary strictly following the Custom Prompt based on the Transcript, using the specified HTML and Unicode emoji formatting.`,
+Please generate the summary strictly following the Custom Prompt based on the Transcript, using the specified HTML, Unicode emoji formatting, and whitespace guidelines.`,
   config: {
-    temperature: 0.6, // Slightly creative but still focused on instructions
+    temperature: 0.5, // Slightly more deterministic to follow formatting closely
     // safetySettings: [{ category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }] // Example safety setting if needed
   },
 });
